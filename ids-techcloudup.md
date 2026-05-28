@@ -103,8 +103,8 @@ Visualize suspicious traffic alerts detected by Suricata in a near-real-time das
 - [x] Enable and verify systemd service
 
 ### Phase 2 — Log Forwarder (WAF VM)
-- [ ] cron script: parse `eve.json` for new alerts → POST to n8n webhook (every 1 min)
-- [ ] Mock alert inject script (appends synthetic events directly to `eve.json`)
+- [x] cron script: parse `eve.json` for new alerts → POST to n8n webhook (every 1 min)
+- [x] Mock alert inject script (appends synthetic events directly to `eve.json`)
 
 ### Phase 3 — Flask Extension (WAF VM)
 - [ ] `POST /api/ingest` route (API key validation + save to alerts.json, max 50 entries)
