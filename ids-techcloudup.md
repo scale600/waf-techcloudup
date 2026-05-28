@@ -98,9 +98,9 @@ Visualize suspicious traffic alerts detected by Suricata in a near-real-time das
 ## Implementation Checklist
 
 ### Phase 1 — Suricata Installation (WAF VM)
-- [ ] `apt install suricata`, configure `eve.json` output
-- [ ] Download Emerging Threats ruleset via `suricata-update`
-- [ ] Enable and verify systemd service
+- [x] `apt install suricata`, configure `eve.json` output
+- [x] Download Emerging Threats ruleset via `suricata-update`
+- [x] Enable and verify systemd service
 
 ### Phase 2 — Log Forwarder (WAF VM)
 - [ ] cron script: parse `eve.json` for new alerts → POST to n8n webhook (every 1 min)
@@ -113,7 +113,7 @@ Visualize suspicious traffic alerts detected by Suricata in a near-real-time das
 ### Phase 4 — Nginx Update (WAF VM)
 - [ ] Add `ids.techcloudup.com` server block (static HTML + `/api/*` reverse proxy)
 
-### Phase 5 — n8n Workflow (existing VM)
+### Phase 5 — n8n Workflow (existing VM: n8n.techcloudup.com)
 - [ ] Webhook node → Slack node → HTTP Request node (`POST /api/ingest`)
 
 ### Phase 6 — Frontend
