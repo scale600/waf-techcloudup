@@ -68,32 +68,6 @@ test@example.com
 
 ---
 
-## Implementation Checklist
-
-### Step 1 — GCP Infrastructure
-- [ ] Create e2-micro instance (Ubuntu 22.04, us-central1) with swap memory + gzip
-- [ ] GCP Firewall Rule — allow inbound HTTP(80) / HTTPS(443)
-- [ ] GCP Firewall Rule — allow only Cloudflare IP ranges (block direct origin access)
-
-### Step 2 — Backend Server
-- [ ] Install Nginx + Flask (Gunicorn) and implement echo endpoint
-- [ ] Configure Nginx CORS headers (`Access-Control-Allow-Origin`)
-
-### Step 3 — Cloudflare Connection
-- [ ] Add `waf.techcloudup.com` A record in Cloudflare DNS (Orange Cloud ON)
-- [ ] Verify HTTPS certificate (auto-provisioned by Cloudflare)
-
-### Step 4 — WAF Configuration
-- [ ] Enable Cloudflare WAF Managed Ruleset (SQLi / XSS rules ON)
-- [ ] Configure custom block page (Custom Error Page)
-
-### Step 5 — Frontend & Testing
-- [ ] Build and deploy frontend HTML form page
-- [ ] Implement 403 (blocked) vs 200 (safe) response distinction in UI
-- [ ] Verify 403 response via `curl` test
-
----
-
 ## Quick Test with curl
 
 ```bash
