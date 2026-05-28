@@ -1,4 +1,4 @@
-# techcloudup.com — Cloud Security Demo Portfolio
+# techcloudup.com — Cloud Security Demo
 
 A collection of live, interactive demos showcasing real-world cloud security concepts using GCP and Cloudflare.
 
