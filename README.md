@@ -1,83 +1,67 @@
-# WAF Interactive Demo — waf.techcloudup.com
+# techcloudup.com — Cloud Security Demo Portfolio
 
-An interactive demo where anyone can submit SQL Injection or XSS payloads through a simple web form, and watch Cloudflare WAF detect and block them in real time.
-
-- **Attack payload** → WAF detects → returns `403 Forbidden` with a custom block page
-- **Normal input** → passes through backend → returns "Safe request" response
+A collection of live, interactive demos showcasing real-world cloud security concepts using GCP and Cloudflare.
 
 ---
 
-## Architecture
+## Projects
 
-```
-User Browser
-    │
-    │  1. https://waf.techcloudup.com
-    ▼
-[Cloudflare Edge]
-    │
-    │  2. Inspect request with WAF Ruleset
-    │
-    ├─ [Attack detected] ──────────────────► 403 Block Page (never reaches origin)
-    │   e.g. ' OR 1=1 --  /  <script>alert(1)</script>
-    │
-    └─ [Clean request] ────────────────────► Origin Server
-                                              │
-                                              ▼
-                                        Nginx + Flask
-                                        "Safe request" response
-```
+### [waf.techcloudup.com](https://waf.techcloudup.com) — WAF Interactive Demo
+
+Submit SQL Injection or XSS payloads through a web form and watch Cloudflare WAF block them in real time.
+
+- Attack payload → WAF detects → `403 Forbidden`
+- Normal input → passes backend → "Safe request" response
+
+**Stack:** GCP e2-micro · Nginx + Python Flask · Cloudflare WAF (OWASP CRS)
+
+→ See [waf-techcloudup.md](waf-techcloudup.md) for full tech spec and implementation details.
 
 ---
 
-## Tech Stack
+### [ids.techcloudup.com](https://ids.techcloudup.com) — IDS Live Alert Dashboard *(in progress)*
 
-| Layer | Technology | Notes |
-|-------|-----------|-------|
-| Domain / DNS | `waf.techcloudup.com` | Cloudflare DNS — Orange Cloud (proxy ON) |
-| WAF Engine | Cloudflare WAF (Managed Ruleset) | OWASP CRS — SQLi / XSS / RCE rules enabled |
-| Origin Server | GCP Compute Engine (e2-micro) | Ubuntu 22.04, us-central1 |
-| Web Server | Nginx + Python Flask (Gunicorn) | Echo server — returns input as-is |
-| Frontend | HTML + CSS + JavaScript | Form → `fetch` API → display response |
-| Test Tools | `curl` / Browser DevTools | Inspect headers and status codes directly |
+A near-real-time dashboard that visualizes Suricata IDS alerts detected on the server.
+
+- Suricata monitors live traffic → alerts forwarded via n8n → displayed in browser table
+- Auto-refreshes every 30 seconds
+
+**Stack:** Suricata · n8n · Python Flask · Cloudflare DNS
+
+→ See [ids-techcloudup.md](ids-techcloudup.md) for full tech spec and implementation details.
 
 ---
 
-## Test Payloads
+## Architecture Overview
 
-### SQL Injection (blocked)
 ```
-' OR 1=1 --
-' UNION SELECT null, table_name FROM information_schema.tables --
-admin'--
-```
+[GCP e2-micro — Shared VM]
+ ├─ Suricata (IDS engine)
+ ├─ Nginx
+ │    ├─ waf.techcloudup.com  →  Flask echo server (WAF demo)
+ │    └─ ids.techcloudup.com  →  Static dashboard + Flask API (IDS demo)
+ └─ Flask (Gunicorn)
 
-### XSS — Cross-Site Scripting (blocked)
-```
-<script>alert('xss')</script>
-"><img src=x onerror=alert(1)>
-javascript:alert(document.cookie)
-```
+[n8n VM]  n8n.techcloudup.com  →  alert automation & Slack notifications
 
-### Normal Input (allowed)
-```
-hello world
-test@example.com
-2024-01-01
+[Cloudflare]  DNS proxy + WAF Managed Ruleset (OWASP CRS)
 ```
 
 ---
 
-## Quick Test with curl
+## Quick Test
 
 ```bash
-# Should return 403 — SQL Injection
+# WAF Demo — expect 403 (SQL Injection blocked)
 curl -i "https://waf.techcloudup.com/echo?q=' OR 1=1 --"
 
-# Should return 200 — Normal input
+# WAF Demo — expect 200 (normal input)
 curl -i "https://waf.techcloudup.com/echo?q=hello"
+
+# IDS Demo — fetch latest alerts
+curl https://ids.techcloudup.com/api/alerts
 ```
 
 ---
 
-> Built with Cloudflare WAF (Free tier) + GCP e2-micro free tier.
+> Built on Cloudflare free tier + GCP free tier (e2-micro, us-central1).

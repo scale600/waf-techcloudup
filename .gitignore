@@ -4,9 +4,6 @@
 *.json.key
 *-service-account*.json
 
-# Planning docs (internal)
-waf-techcloudup.md
-
 # Python
 __pycache__/
 *.py[cod]
