@@ -1,0 +1,23 @@
+# Environment & secrets
+.env
+.env.*
+*.json.key
+*-service-account*.json
+
+# Planning docs (internal)
+waf-techcloudup.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
