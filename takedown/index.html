@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Domain Takedown Investigator — techcloudup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d1117;
+      color: #c9d1d9;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-title { font-size: 0.95rem; color: #f0f6fc; }
+    .header-title span { color: #8b949e; }
+    .gh-link {
+      color: #58a6ff;
+      text-decoration: none;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .gh-link:hover { text-decoration: underline; }
+
+    .container { max-width: 860px; margin: 0 auto; padding: 32px 24px; }
+
+    .description {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      font-size: 0.88rem;
+      color: #8b949e;
+      line-height: 1.65;
+    }
+    .description strong { color: #c9d1d9; }
+
+    .pipeline {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      font-size: 0.8rem;
+    }
+    .pipe-step {
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      padding: 3px 10px;
+      color: #c9d1d9;
+    }
+    .pipe-arrow { color: #484f58; }
+
+    .warning {
+      background: #1c1810;
+      border: 1px solid #d2992266;
+      border-radius: 6px;
+      padding: 10px 16px;
+      margin-bottom: 20px;
+      font-size: 0.83rem;
+      color: #d29922;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .domain-input {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #c9d1d9;
+      font-size: 0.95rem;
+      padding: 9px 14px;
+      outline: none;
+      transition: border-color 0.15s;
+      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+    }
+    .domain-input:focus { border-color: #58a6ff; }
+    .domain-input::placeholder { color: #484f58; }
+
+    .btn {
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 9px 22px;
+      font-size: 0.92rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) { background: #2ea043; }
+    .btn:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+
+    .error-bar {
+      background: #1a0a0a;
+      border: 1px solid #f8514944;
+      border-radius: 6px;
+      color: #f85149;
+      padding: 10px 16px;
+      margin-bottom: 16px;
+      font-size: 0.87rem;
+      display: none;
+    }
+
+    .terminal-wrap { display: none; }
+    .terminal-wrap.active { display: block; }
+
+    .terminal-header {
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: #8b949e;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-red { background: #f85149; }
+    .dot-yellow { background: #d29922; }
+    .dot-green { background: #3fb950; }
+    .terminal-domain { margin-left: auto; color: #58a6ff; font-family: monospace; }
+
+    .terminal {
+      background: #010409;
+      border: 1px solid #30363d;
+      border-radius: 0 0 8px 8px;
+      padding: 16px;
+      min-height: 420px;
+      max-height: 580px;
+      overflow-y: auto;
+      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+      font-size: 0.8rem;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .t-progress { color: #c9d1d9; }
+    .t-ok       { color: #3fb950; font-weight: 600; }
+    .t-section  { color: #58a6ff; }
+    .t-sub      { color: #8b949e; }
+    .t-data     { color: #7d8590; }
+    .t-error    { color: #f85149; }
+    .t-title    { color: #f0f6fc; font-weight: 600; }
+
+    .status-row {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      font-size: 0.83rem;
+      color: #8b949e;
+    }
+    .status-row.active { display: flex; }
+    .spinner {
+      width: 13px; height: 13px;
+      border: 2px solid #30363d;
+      border-top-color: #58a6ff;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .progress-bar-wrap {
+      flex: 1;
+      background: #21262d;
+      border-radius: 4px;
+      height: 4px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #58a6ff;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    .step-label { min-width: 80px; text-align: right; }
+
+    .done-badge {
+      display: none;
+      background: #0f2c1a;
+      border: 1px solid #3fb95044;
+      border-radius: 6px;
+      color: #3fb950;
+      padding: 8px 16px;
+      margin-top: 12px;
+      font-size: 0.85rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">
+    <span>techcloudup / </span>Domain Takedown Investigator
+  </div>
+  <a class="gh-link" href="https://github.com/scale600/waf-techcloudup" target="_blank">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+               0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+               -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
+               .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
+               -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27
+               .68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12
+               .51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
+               0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+    </svg>
+    GitHub
+  </a>
+</header>
+
+<div class="container">
+
+  <div class="description">
+    <strong>What this does:</strong> Enter a suspected phishing or brand-impersonation domain.
+    The tool runs a full passive investigation — DNS records, WHOIS, SSL certificate, HTTP headers,
+    robots.txt, and sitemap analysis — then outputs a structured report with all data needed to file
+    abuse reports with the hosting provider, domain registrar, APWG, IC3, Google Safe Browsing, and FTC.
+    <div class="pipeline">
+      <span class="pipe-step">DNS / WHOIS</span>
+      <span class="pipe-arrow">→</span>
+      <span class="pipe-step">SSL Cert</span>
+      <span class="pipe-arrow">→</span>
+      <span class="pipe-step">HTTP Headers</span>
+      <span class="pipe-arrow">→</span>
+      <span class="pipe-step">Sitemap</span>
+      <span class="pipe-arrow">→</span>
+      <span class="pipe-step">Summary Report</span>
+    </div>
+  </div>
+
+  <div class="warning">
+    This tool performs passive, read-only network queries (DNS, WHOIS, HTTP GET). It does not send any traffic to the target beyond standard HTTP requests.
+  </div>
+
+  <div class="error-bar" id="errorBar"></div>
+
+  <div class="form-row">
+    <input
+      class="domain-input"
+      id="domainInput"
+      type="text"
+      placeholder="sena-australia.com"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <button class="btn" id="startBtn" onclick="startInvestigation()">Investigate</button>
+  </div>
+
+  <div class="terminal-wrap" id="terminalWrap">
+    <div class="terminal-header">
+      <div class="dot dot-red"></div>
+      <div class="dot dot-yellow"></div>
+      <div class="dot dot-green"></div>
+      <span style="margin-left:4px;">investigate.sh</span>
+      <span class="terminal-domain" id="terminalDomain"></span>
+    </div>
+    <div class="terminal" id="terminal"></div>
+  </div>
+
+  <div class="status-row" id="statusRow">
+    <div class="spinner" id="spinner"></div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <span class="step-label" id="stepLabel">0 / 11</span>
+  </div>
+
+  <div class="done-badge" id="doneBadge">
+    Investigation complete — scroll up to review the full report.
+  </div>
+
+</div>
+
+<script>
+  let evtSource = null;
+  let stepCount = 0;
+
+  function startInvestigation() {
+    const domain = document.getElementById('domainInput').value.trim();
+    if (!domain) return;
+
+    const termWrap  = document.getElementById('terminalWrap');
+    const terminal  = document.getElementById('terminal');
+    const errorBar  = document.getElementById('errorBar');
+    const statusRow = document.getElementById('statusRow');
+    const startBtn  = document.getElementById('startBtn');
+    const doneBadge = document.getElementById('doneBadge');
+    const termDom   = document.getElementById('terminalDomain');
+    const progBar   = document.getElementById('progressBar');
+    const stepLabel = document.getElementById('stepLabel');
+
+    terminal.innerHTML = '';
+    errorBar.style.display = 'none';
+    doneBadge.style.display = 'none';
+    termWrap.classList.add('active');
+    statusRow.classList.add('active');
+    startBtn.disabled = true;
+    termDom.textContent = domain;
+    stepCount = 0;
+    progBar.style.width = '0%';
+    stepLabel.textContent = '0 / 11';
+
+    if (evtSource) evtSource.close();
+
+    evtSource = new EventSource('/api/investigate/stream?domain=' + encodeURIComponent(domain));
+
+    evtSource.onmessage = function(e) {
+      if (e.data === '__DONE__') {
+        evtSource.close();
+        startBtn.disabled = false;
+        statusRow.classList.remove('active');
+        doneBadge.style.display = 'block';
+        progBar.style.width = '100%';
+        return;
+      }
+
+      let line;
+      try { line = JSON.parse(e.data); } catch (_) { line = e.data; }
+
+      if (line.startsWith('[') && /\[(\d+)\/11\]/.test(line)) {
+        const m = line.match(/\[(\d+)\/11\]/);
+        if (m) {
+          stepCount = parseInt(m[1]);
+          progBar.style.width = Math.round((stepCount / 11) * 100) + '%';
+          stepLabel.textContent = stepCount + ' / 11';
+        }
+      }
+
+      appendLine(line);
+    };
+
+    evtSource.onerror = function() {
+      evtSource.close();
+      startBtn.disabled = false;
+      statusRow.classList.remove('active');
+      showError('Connection error. The server may be busy — please try again.');
+    };
+  }
+
+  function appendLine(line) {
+    const terminal = document.getElementById('terminal');
+    const span = document.createElement('span');
+    span.className = classifyLine(line);
+    span.textContent = line + '\n';
+    terminal.appendChild(span);
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+
+  function classifyLine(line) {
+    if (/^={3,}/.test(line))                  return 't-section';
+    if (/^-{3,}/.test(line))                  return 't-sub';
+    if (/^\[(\d+)\/11\]/.test(line))          return 't-progress';
+    if (/^✓/.test(line))                      return 't-ok';
+    if (/^={20,}/.test(line))                 return 't-title';
+    if (/^(Error|error|Failed|failed)/.test(line)) return 't-error';
+    return 't-data';
+  }
+
+  function showError(msg) {
+    const bar = document.getElementById('errorBar');
+    bar.textContent = msg;
+    bar.style.display = 'block';
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('domainInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') startInvestigation();
+    });
+  });
+</script>
+
+</body>
+</html>
