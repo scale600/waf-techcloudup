@@ -234,8 +234,37 @@
     @media (max-width: 600px) {
       .stats-row { grid-template-columns: repeat(2, 1fr); }
       header h1 { font-size: 1.5rem; }
-      .pipeline { flex-direction: column; align-items: flex-start; }
-      .pipe-arrow { transform: rotate(90deg); padding: 4px 0; }
+
+      /* 2-column grid layout for pipeline */
+      .pipeline {
+        display: grid;
+        grid-template-columns: 1fr 28px 1fr;
+        grid-template-rows: auto auto auto auto auto;
+        align-items: center;
+        row-gap: 6px;
+        flex-wrap: unset;
+      }
+      .pipe-step:nth-child(1) { grid-column: 1; grid-row: 1; }
+      .pipe-arrow:nth-child(2) { grid-column: 2; grid-row: 1; text-align: center; padding: 0; }
+      .pipe-step:nth-child(3) { grid-column: 3; grid-row: 1; }
+      /* Between row 1→2: full-width vertical connector */
+      .pipe-arrow:nth-child(4) { grid-column: 1 / -1; grid-row: 2; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0; }
+      .pipe-step:nth-child(5) { grid-column: 1; grid-row: 3; }
+      .pipe-arrow:nth-child(6) { grid-column: 2; grid-row: 3; text-align: center; padding: 0; }
+      .pipe-step:nth-child(7) { grid-column: 3; grid-row: 3; }
+      /* Between row 2→3: full-width vertical connector */
+      .pipe-arrow:nth-child(8) { grid-column: 1 / -1; grid-row: 4; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0; }
+      /* Last step: full width, centered */
+      .pipe-step:nth-child(9) { grid-column: 1 / -1; grid-row: 5; max-width: 200px; margin: 0 auto; }
+
+      /* Inline arrows (2, 6): hide label, keep icon */
+      .pipe-arrow:nth-child(2) .arr-label,
+      .pipe-arrow:nth-child(6) .arr-label { display: none; }
+
+      /* Vertical connectors (4, 8): swap → for ↓ */
+      .pipe-arrow.pipe-arrow-v .arr-icon { display: none; }
+      .pipe-arrow.pipe-arrow-v::before { content: "↓"; color: #30363d; font-size: 1rem; }
+      .pipe-arrow.pipe-arrow-v .arr-label { display: inline; margin-top: 0; white-space: nowrap; }
     }
   </style>
 </head>
@@ -259,25 +288,25 @@
       <div class="ps-name">Suricata IDS</div>
       <div class="ps-note">writes eve.json</div>
     </div>
-    <div class="pipe-arrow">→<span class="arr-label">cron · 1 min</span></div>
+    <div class="pipe-arrow"><span class="arr-icon">→</span><span class="arr-label">cron · 1 min</span></div>
     <div class="pipe-step">
       <div class="ps-label">Python script</div>
       <div class="ps-name">Log Forwarder</div>
       <div class="ps-note">parse new alerts</div>
     </div>
-    <div class="pipe-arrow">→<span class="arr-label">POST webhook</span></div>
+    <div class="pipe-arrow pipe-arrow-v"><span class="arr-icon">→</span><span class="arr-label">POST webhook</span></div>
     <div class="pipe-step">
       <div class="ps-label">n8n.techcloudup.com</div>
       <div class="ps-name">n8n Workflow</div>
       <div class="ps-note">Slack + ingest</div>
     </div>
-    <div class="pipe-arrow">→<span class="arr-label">POST /api/ingest</span></div>
+    <div class="pipe-arrow"><span class="arr-icon">→</span><span class="arr-label">POST /api/ingest</span></div>
     <div class="pipe-step">
       <div class="ps-label">Nginx + Flask · GCP</div>
       <div class="ps-name">Flask API</div>
       <div class="ps-note">alerts.json (max 50)</div>
     </div>
-    <div class="pipe-arrow">→<span class="arr-label">GET · 30 s poll</span></div>
+    <div class="pipe-arrow pipe-arrow-v"><span class="arr-icon">→</span><span class="arr-label">GET · 30s poll</span></div>
     <div class="pipe-step">
       <div class="ps-label">Cloudflare CDN</div>
       <div class="ps-name">This Dashboard</div>
