@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suricata IDS Live Alerts — ids.techcloudup.com</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container { max-width: 1020px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 36px; }
+    header h1 { font-size: 2rem; color: #f0f6fc; margin-bottom: 8px; }
+    header p { color: #8b949e; font-size: 0.9rem; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #0f2318;
+      border: 1px solid #2ea043;
+      color: #3fb950;
+      font-size: 0.75rem;
+      padding: 3px 12px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+    .badge-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #3fb950;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.25; } }
+
+    /* Stats */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .stat-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 16px 20px;
+      text-align: center;
+    }
+    .stat-card .num  { font-size: 2rem; font-weight: 700; color: #f0f6fc; line-height: 1; }
+    .stat-card .lbl  { font-size: 0.75rem; color: #8b949e; margin-top: 4px; }
+    .stat-card.c-red  { border-color: #f85149; } .stat-card.c-red  .num { color: #f85149; }
+    .stat-card.c-org  { border-color: #d29922; } .stat-card.c-org  .num { color: #d29922; }
+    .stat-card.c-blue { border-color: #58a6ff; } .stat-card.c-blue .num { color: #58a6ff; }
+
+    /* Card */
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 14px;
+    }
+    .card-title {
+      font-size: 0.75rem;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px;
+    }
+
+    /* Chart */
+    .chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 56px;
+    }
+    .chart-bar {
+      flex: 1;
+      background: #21262d;
+      border-radius: 3px 3px 0 0;
+      transition: background 0.2s;
+      cursor: default;
+    }
+    .chart-bar.has-data { background: #1f6feb; }
+    .chart-bar:hover { opacity: 0.75; }
+    .chart-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 5px;
+      font-size: 0.7rem;
+      color: #484f58;
+    }
+
+    /* Status bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 10px 16px;
+      margin-bottom: 14px;
+      font-size: 0.83rem;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .status-left { color: #8b949e; }
+    .status-left .ts { color: #c9d1d9; }
+    .status-left .ago { color: #484f58; margin-left: 6px; }
+    .status-right { display: flex; align-items: center; gap: 12px; color: #8b949e; }
+    .countdown { color: #58a6ff; font-weight: 600; }
+    .refresh-btn {
+      background: transparent;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #8b949e;
+      font-size: 0.78rem;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .refresh-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+
+    /* Table */
+    .table-card { padding: 0; overflow: hidden; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    thead th {
+      text-align: left;
+      padding: 10px 14px;
+      color: #8b949e;
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #30363d;
+      background: #161b22;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid #21262d; transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #1c2128; }
+    tbody tr.new-row { animation: rowIn 0.5s ease; }
+    @keyframes rowIn { from { background: #162516; } to { background: transparent; } }
+    td { padding: 10px 14px; vertical-align: middle; }
+    .mono { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.81rem; }
+    .sig-name { color: #f0f6fc; }
+    .sig-cat  { color: #8b949e; font-size: 0.76rem; margin-top: 1px; }
+
+    .sev-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .sev-1 { background: #1a0808; color: #f85149; border: 1px solid #f8514944; }
+    .sev-2 { background: #1a1208; color: #d29922; border: 1px solid #d2992244; }
+    .sev-3 { background: #080f1a; color: #58a6ff; border: 1px solid #58a6ff44; }
+    .sev-x { background: #161b22; color: #8b949e; border: 1px solid #30363d; }
+
+    .action-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: #0d1f12;
+      color: #3fb950;
+      border: 1px solid #2ea04333;
+    }
+    .action-badge.blocked { background: #1a0808; color: #f85149; border-color: #f8514933; }
+
+    .empty-state { text-align: center; padding: 48px; color: #484f58; font-size: 0.88rem; }
+
+    footer { margin-top: 40px; text-align: center; color: #484f58; font-size: 0.78rem; }
+    footer a { color: #58a6ff; text-decoration: none; }
+
+    /* Pipeline */
+    .pipeline {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+      row-gap: 10px;
+      margin-bottom: 14px;
+    }
+    .pipe-step {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 0.82rem;
+      min-width: 120px;
+      flex-shrink: 0;
+    }
+    .pipe-step .ps-label { font-size: 0.7rem; color: #484f58; margin-bottom: 3px; }
+    .pipe-step .ps-name  { color: #f0f6fc; font-weight: 600; }
+    .pipe-step .ps-note  { font-size: 0.72rem; color: #8b949e; margin-top: 2px; font-family: 'SFMono-Regular', Consolas, monospace; }
+    .pipe-arrow {
+      color: #30363d;
+      font-size: 1rem;
+      padding: 0 8px;
+      flex-shrink: 0;
+    }
+    .pipe-arrow .arr-label { font-size: 0.68rem; color: #484f58; display: block; text-align: center; margin-top: 2px; white-space: nowrap; }
+
+    @media (max-width: 600px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      header h1 { font-size: 1.5rem; }
+      .pipeline { flex-direction: column; align-items: flex-start; }
+      .pipe-arrow { transform: rotate(90deg); padding: 4px 0; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="badge"><span class="badge-dot"></span>Live</div>
+    <h1>Suricata IDS Live Alerts</h1>
+    <p>Real-time intrusion detection events · Suricata on GCP → n8n → Flask API · 30-second polling</p>
+  </header>
+
+  <!-- Pipeline explanation -->
+  <div class="pipeline">
+    <div class="pipe-step">
+      <div class="ps-label">GCP e2-micro · Ubuntu 22.04</div>
+      <div class="ps-name">Suricata IDS</div>
+      <div class="ps-note">writes eve.json</div>
+    </div>
+    <div class="pipe-arrow">→<span class="arr-label">cron · 1 min</span></div>
+    <div class="pipe-step">
+      <div class="ps-label">Python script</div>
+      <div class="ps-name">Log Forwarder</div>
+      <div class="ps-note">parse new alerts</div>
+    </div>
+    <div class="pipe-arrow">→<span class="arr-label">POST webhook</span></div>
+    <div class="pipe-step">
+      <div class="ps-label">n8n.techcloudup.com</div>
+      <div class="ps-name">n8n Workflow</div>
+      <div class="ps-note">Slack + ingest</div>
+    </div>
+    <div class="pipe-arrow">→<span class="arr-label">POST /api/ingest</span></div>
+    <div class="pipe-step">
+      <div class="ps-label">Nginx + Flask · GCP</div>
+      <div class="ps-name">Flask API</div>
+      <div class="ps-note">alerts.json (max 50)</div>
+    </div>
+    <div class="pipe-arrow">→<span class="arr-label">GET · 30 s poll</span></div>
+    <div class="pipe-step">
+      <div class="ps-label">Cloudflare CDN</div>
+      <div class="ps-name">This Dashboard</div>
+      <div class="ps-note">ids.techcloudup.com</div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="num" id="stat-total">—</div>
+      <div class="lbl">Total (last 50)</div>
+    </div>
+    <div class="stat-card c-red">
+      <div class="num" id="stat-high">—</div>
+      <div class="lbl">High (Sev 1)</div>
+    </div>
+    <div class="stat-card c-org">
+      <div class="num" id="stat-med">—</div>
+      <div class="lbl">Medium (Sev 2)</div>
+    </div>
+    <div class="stat-card c-blue">
+      <div class="num" id="stat-low">—</div>
+      <div class="lbl">Low (Sev 3+)</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Alert Frequency — Last 60 Minutes (5-min buckets)</div>
+    <div class="chart" id="chart"></div>
+    <div class="chart-labels">
+      <span>−60m</span><span>−45m</span><span>−30m</span><span>−15m</span><span>now</span>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-left">
+      Last updated: <span class="ts" id="last-updated">—</span>
+      <span class="ago" id="staleness"></span>
+    </div>
+    <div class="status-right">
+      Refresh in <span class="countdown" id="countdown">30</span>s
+      <button class="refresh-btn" onclick="fetchAlerts()">↻ Now</button>
+    </div>
+  </div>
+
+  <div class="card table-card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Signature</th>
+            <th>Src IP</th>
+            <th>Dst IP</th>
+            <th>Sev</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="6" class="empty-state">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    <a href="https://waf.techcloudup.com" target="_blank">WAF Demo</a>
+    &nbsp;·&nbsp; ids.techcloudup.com &nbsp;·&nbsp; Suricata + n8n + Flask on GCP
+  </footer>
+
+</div>
+<script>
+  const SEV = { '1': ['High','sev-1'], '2': ['Medium','sev-2'], '3': ['Low','sev-3'] };
+  let prevIds = new Set();
+  let cdTimer, cdVal = 30;
+
+  function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function fmtTs(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleString('en-US', {
+      month:'2-digit', day:'2-digit',
+      hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+    });
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return '';
+    const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 5)    return '(just now)';
+    if (s < 60)   return `(${s}s ago)`;
+    if (s < 3600) return `(${Math.floor(s/60)}m ago)`;
+    return `(${Math.floor(s/3600)}h ago)`;
+  }
+
+  function rowId(a) {
+    return (a.received_at || '') + (a.src_ip || '') + (a.alert?.signature || a.signature || '');
+  }
+
+  async function fetchAlerts() {
+    try {
+      const r = await fetch('/api/alerts');
+      const d = await r.json();
+      render(d.alerts || [], d.last_updated);
+    } catch {
+      document.getElementById('last-updated').textContent = 'fetch error';
+    }
+    resetCd();
+  }
+
+  function render(alerts, lastUpdated) {
+    const high = alerts.filter(a => (a.alert?.severity ?? a.severity) == 1).length;
+    const med  = alerts.filter(a => (a.alert?.severity ?? a.severity) == 2).length;
+    const low  = alerts.filter(a => (a.alert?.severity ?? a.severity) >= 3).length;
+    document.getElementById('stat-total').textContent = alerts.length;
+    document.getElementById('stat-high').textContent  = high;
+    document.getElementById('stat-med').textContent   = med;
+    document.getElementById('stat-low').textContent   = low;
+
+    const luEl = document.getElementById('last-updated');
+    luEl.textContent    = fmtTs(lastUpdated);
+    luEl.dataset.iso    = lastUpdated || '';
+    document.getElementById('staleness').textContent = timeAgo(lastUpdated);
+
+    renderChart(alerts);
+    renderTable(alerts);
+  }
+
+  function renderChart(alerts) {
+    const now = Date.now();
+    const B = 12, bMs = 5 * 60 * 1000;
+    const buckets = Array(B).fill(0);
+    alerts.forEach(a => {
+      const t = new Date(a.received_at || a.timestamp || 0).getTime();
+      const ago = now - t;
+      if (ago < 0 || ago >= B * bMs) return;
+      buckets[B - 1 - Math.floor(ago / bMs)]++;
+    });
+    const max = Math.max(...buckets, 1);
+    const MAX_PX = 56;
+    document.getElementById('chart').innerHTML = buckets.map(n => {
+      const h = Math.max(Math.round((n / max) * MAX_PX), 2);
+      return `<div class="chart-bar${n > 0 ? ' has-data' : ''}" style="height:${h}px" title="${n} alert${n!==1?'s':''}"></div>`;
+    }).join('');
+  }
+
+  function renderTable(alerts) {
+    const tbody = document.getElementById('tbody');
+    if (!alerts.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No alerts yet — waiting for data…</td></tr>';
+      prevIds = new Set();
+      return;
+    }
+    const newSet = new Set(alerts.map(rowId));
+    tbody.innerHTML = alerts.map(a => {
+      const sig  = a.alert?.signature || a.signature || '—';
+      const cat  = a.alert?.category  || a.category  || '';
+      const sev  = String(a.alert?.severity ?? a.severity ?? '');
+      const act  = a.alert?.action || a.action || 'allowed';
+      const srcIp = a.src_ip  || '—';
+      const dstIp = a.dest_ip || a.dst_ip || '—';
+      const ts   = a.received_at || a.timestamp || '';
+      const isNew = !prevIds.has(rowId(a));
+      const [sevLbl, sevCls] = SEV[sev] || ['—', 'sev-x'];
+      const isBlock = act === 'blocked' || act === 'drop';
+      return `<tr${isNew ? ' class="new-row"' : ''}>
+        <td class="mono">${esc(fmtTs(ts))}</td>
+        <td><div class="sig-name">${esc(sig)}</div>${cat ? `<div class="sig-cat">${esc(cat)}</div>` : ''}</td>
+        <td class="mono">${esc(srcIp)}</td>
+        <td class="mono">${esc(dstIp)}</td>
+        <td><span class="sev-badge ${sevCls}">${sevLbl}</span></td>
+        <td><span class="action-badge${isBlock ? ' blocked' : ''}">${isBlock ? 'Blocked' : 'Detected'}</span></td>
+      </tr>`;
+    }).join('');
+    prevIds = newSet;
+  }
+
+  function resetCd() {
+    clearInterval(cdTimer);
+    cdVal = 30;
+    document.getElementById('countdown').textContent = cdVal;
+    cdTimer = setInterval(() => {
+      cdVal--;
+      document.getElementById('countdown').textContent = cdVal;
+      if (cdVal <= 0) { clearInterval(cdTimer); fetchAlerts(); }
+    }, 1000);
+  }
+
+  setInterval(() => {
+    const iso = document.getElementById('last-updated').dataset.iso;
+    if (iso) document.getElementById('staleness').textContent = timeAgo(iso);
+  }, 10000);
+
+  fetchAlerts();
+</script>
+</body>
+</html>

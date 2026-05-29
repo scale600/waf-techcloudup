@@ -99,6 +99,7 @@ test@example.com
 ### Phase 3 — Cloudflare Setup
 - [x] `waf.techcloudup.com` A record in Cloudflare DNS (Orange Cloud ON)
 - [x] HTTPS certificate (auto-provisioned by Cloudflare)
+- [x] Origin SSL certificate — Let's Encrypt via certbot (expires 2026-08-26, auto-renew enabled)
 
 ### Phase 4 — WAF Configuration
 - [x] Cloudflare WAF Managed Ruleset enabled (SQLi / XSS rules ON)

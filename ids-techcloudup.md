@@ -107,19 +107,19 @@ Visualize suspicious traffic alerts detected by Suricata in a near-real-time das
 - [x] Mock alert inject script (appends synthetic events directly to `eve.json`)
 
 ### Phase 3 — Flask Extension (WAF VM)
-- [ ] `POST /api/ingest` route (API key validation + save to alerts.json, max 50 entries)
-- [ ] `GET /api/alerts` route (include `last_updated` timestamp)
+- [x] `POST /api/ingest` route (API key validation + save to alerts.json, max 50 entries)
+- [x] `GET /api/alerts` route (include `last_updated` timestamp)
 
 ### Phase 4 — Nginx Update (WAF VM)
-- [ ] Add `ids.techcloudup.com` server block (static HTML + `/api/*` reverse proxy)
+- [x] Add `ids.techcloudup.com` server block (static HTML + `/api/*` reverse proxy)
 
 ### Phase 5 — n8n Workflow (existing VM: n8n.techcloudup.com)
-- [ ] Webhook node → Slack node → HTTP Request node (`POST /api/ingest`)
+- [x] Webhook node → Slack node (disabled, placeholder) → HTTP Request node (`POST /api/ingest`)
 
 ### Phase 6 — Frontend
-- [ ] Static HTML/JS dashboard (30s polling, staleness indicator from `last_updated`)
-- [ ] (Optional) Alert count chart for the last 1 hour
+- [x] Static HTML/JS dashboard (30s polling, staleness indicator from `last_updated`)
+- [x] Alert count chart for the last 1 hour (5-minute buckets)
 
 ### Phase 7 — Cloudflare & Final Steps
-- [ ] Add `ids.techcloudup.com` A record (same IP as WAF VM)
-- [ ] Register mock alert cron schedule
+- [x] Add `ids.techcloudup.com` A record (same IP as WAF VM)
+- [x] Register mock alert cron schedule
