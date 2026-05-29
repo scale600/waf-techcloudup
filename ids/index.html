@@ -228,6 +228,8 @@
     }
     .net-dns  { background: #080f1a; color: #58a6ff; border: 1px solid #58a6ff44; }
     .net-http { background: #1a1208; color: #d29922; border: 1px solid #d2992244; }
+    .net-tls  { background: #0f1a0f; color: #3fb950; border: 1px solid #3fb95044; }
+    .net-ssh  { background: #1a0a1a; color: #bc8cff; border: 1px solid #bc8cff44; }
     .net-detail { color: #f0f6fc; }
     .net-sub    { color: #8b949e; font-size: 0.76rem; margin-top: 1px; }
 
@@ -583,11 +585,21 @@
         badge  = '<span class="net-badge net-dns">DNS</span>';
         detail = esc(q.rrname || '—');
         sub    = esc(q.rrtype || '');
-      } else {
+      } else if (type === 'http') {
         const h = e.http || {};
         badge  = '<span class="net-badge net-http">HTTP</span>';
         detail = `${esc(h.http_method || '')} ${esc(h.url || '—')}`;
         sub    = esc(h.hostname || '');
+      } else if (type === 'tls') {
+        const t = e.tls || {};
+        badge  = '<span class="net-badge net-tls">TLS</span>';
+        detail = esc(t.sni || t.subject || '—');
+        sub    = esc(t.version || '');
+      } else {
+        const s = e.ssh || {};
+        badge  = '<span class="net-badge net-ssh">SSH</span>';
+        detail = esc((s.client || {}).software_version || '—');
+        sub    = `port ${esc(String(e.dest_port || ''))}`;
       }
 
       return `<tr>

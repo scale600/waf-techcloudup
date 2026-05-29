@@ -33,7 +33,7 @@ def should_include(event):
     t = event.get('event_type')
     if t == 'dns':
         return event.get('dns', {}).get('type') == 'query'
-    return t == 'http'
+    return t in {'http', 'tls', 'ssh'}
 
 
 def main():
