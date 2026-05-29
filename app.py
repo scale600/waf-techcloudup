@@ -1,3 +1,5 @@
+import glob
+import io
 import json
 import os
 import re
@@ -6,8 +8,10 @@ import subprocess
 import tempfile
 import threading
 import time
+import uuid
+import zipfile
 from datetime import datetime, timezone
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, send_file
 
 app = Flask(__name__)
 
@@ -23,6 +27,16 @@ _DOMAIN_RE = re.compile(
     r'(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)+$'
 )
 _inv = {'ts': 0.0, 'mu': threading.Lock()}
+_downloads = {}  # token -> {'tmpdir': path, 'ts': float}
+_dl_lock = threading.Lock()
+
+
+def _cleanup_old_downloads():
+    now = time.time()
+    with _dl_lock:
+        expired = [t for t, v in _downloads.items() if now - v['ts'] > 900]
+        for t in expired:
+            shutil.rmtree(_downloads.pop(t)['tmpdir'], ignore_errors=True)
 
 
 def _load_alerts():
@@ -118,6 +132,8 @@ def investigate_stream():
     if not domain or not _DOMAIN_RE.match(domain):
         return jsonify({'error': 'Invalid domain format'}), 400
 
+    _cleanup_old_downloads()
+
     with _inv['mu']:
         elapsed = time.time() - _inv['ts']
         if elapsed < 90:
@@ -127,6 +143,7 @@ def investigate_stream():
 
     def generate():
         tmpdir = tempfile.mkdtemp(prefix='inv_')
+        registered = False
         try:
             proc = subprocess.Popen(
                 [INVESTIGATE_SCRIPT, domain],
@@ -139,16 +156,61 @@ def investigate_stream():
             for line in iter(proc.stdout.readline, ''):
                 yield f"data: {json.dumps(line.rstrip())}\n\n"
             proc.wait()
+
+            matches = glob.glob(os.path.join(tmpdir, f'{domain}_investigation_*'))
+            if matches:
+                token = uuid.uuid4().hex[:12]
+                with _dl_lock:
+                    _downloads[token] = {'tmpdir': tmpdir, 'ts': time.time()}
+                registered = True
+                yield f"data: {json.dumps({'__done__': True, 'token': token})}\n\n"
+            else:
+                yield f"data: {json.dumps({'__done__': True})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps(f'Error: {e}')}\n\n"
+            yield f"data: {json.dumps({'__done__': True})}\n\n"
         finally:
-            shutil.rmtree(tmpdir, ignore_errors=True)
-        yield "data: __DONE__\n\n"
+            if not registered:
+                shutil.rmtree(tmpdir, ignore_errors=True)
 
     resp = Response(generate(), mimetype='text/event-stream')
     resp.headers['Cache-Control'] = 'no-cache'
     resp.headers['X-Accel-Buffering'] = 'no'
     return resp
+
+
+@app.route('/api/investigate/download/<token>')
+def investigate_download(token):
+    with _dl_lock:
+        entry = _downloads.pop(token, None)
+    if not entry:
+        return jsonify({'error': 'Not found or expired'}), 404
+
+    tmpdir = entry['tmpdir']
+    try:
+        matches = glob.glob(os.path.join(tmpdir, '*_investigation_*'))
+        if not matches:
+            return jsonify({'error': 'Investigation files not found'}), 404
+
+        inv_dir = matches[0]
+        zip_name = os.path.basename(inv_dir) + '.zip'
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for fname in sorted(os.listdir(inv_dir)):
+                fpath = os.path.join(inv_dir, fname)
+                if os.path.isfile(fpath):
+                    zf.write(fpath, arcname=fname)
+        buf.seek(0)
+
+        return send_file(
+            buf,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=zip_name,
+        )
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 if __name__ == '__main__':

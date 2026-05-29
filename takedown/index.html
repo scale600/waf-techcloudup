@@ -211,6 +211,26 @@
       font-size: 0.85rem;
       text-align: center;
     }
+
+    .download-wrap {
+      display: none;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #1f2937;
+      color: #58a6ff;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 9px 20px;
+      font-size: 0.88rem;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-download:hover { background: #21262d; border-color: #58a6ff; }
   </style>
 </head>
 <body>
@@ -295,6 +315,16 @@
     Investigation complete — scroll up to review the full report.
   </div>
 
+  <div class="download-wrap" id="downloadWrap">
+    <a class="btn-download" id="downloadLink" href="#">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z"/>
+        <path d="M7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.97a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.779a.749.749 0 1 1 1.06-1.06l1.97 1.97Z"/>
+      </svg>
+      Download Investigation Files (.zip)
+    </a>
+  </div>
+
 </div>
 
 <script>
@@ -318,6 +348,7 @@
     terminal.innerHTML = '';
     errorBar.style.display = 'none';
     doneBadge.style.display = 'none';
+    document.getElementById('downloadWrap').style.display = 'none';
     termWrap.classList.add('active');
     statusRow.classList.add('active');
     startBtn.disabled = true;
@@ -331,19 +362,29 @@
     evtSource = new EventSource('/api/investigate/stream?domain=' + encodeURIComponent(domain));
 
     evtSource.onmessage = function(e) {
-      if (e.data === '__DONE__') {
+      let parsed;
+      try { parsed = JSON.parse(e.data); } catch (_) { parsed = e.data; }
+
+      // Done signal (object with __done__ flag)
+      if (parsed && typeof parsed === 'object' && parsed.__done__) {
         evtSource.close();
         startBtn.disabled = false;
         statusRow.classList.remove('active');
         doneBadge.style.display = 'block';
         progBar.style.width = '100%';
+        stepLabel.textContent = '11 / 11';
+        if (parsed.token) {
+          const link = document.getElementById('downloadLink');
+          link.href = '/api/investigate/download/' + parsed.token;
+          document.getElementById('downloadWrap').style.display = 'block';
+        }
         return;
       }
 
-      let line;
-      try { line = JSON.parse(e.data); } catch (_) { line = e.data; }
+      // Regular output line (string)
+      const line = (typeof parsed === 'string') ? parsed : e.data;
 
-      if (line.startsWith('[') && /\[(\d+)\/11\]/.test(line)) {
+      if (/^\[(\d+)\/11\]/.test(line)) {
         const m = line.match(/\[(\d+)\/11\]/);
         if (m) {
           stepCount = parseInt(m[1]);
