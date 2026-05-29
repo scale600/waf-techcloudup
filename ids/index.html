@@ -199,6 +199,38 @@
 
     .empty-state { text-align: center; padding: 48px; color: #484f58; font-size: 0.88rem; }
 
+    /* Tabs */
+    .tab-bar { display: flex; gap: 4px; margin-bottom: 10px; }
+    .tab-btn {
+      background: transparent;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #8b949e;
+      font-size: 0.82rem;
+      padding: 6px 16px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+    .tab-btn.active { background: #1f6feb22; border-color: #1f6feb; color: #58a6ff; font-weight: 600; }
+    .tab-count { font-size: 0.7rem; background: #30363d; border-radius: 10px; padding: 1px 6px; margin-left: 5px; color: #8b949e; }
+    .tab-btn.active .tab-count { background: #1f6feb44; color: #58a6ff; }
+
+    /* Network type badge */
+    .net-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .net-dns  { background: #080f1a; color: #58a6ff; border: 1px solid #58a6ff44; }
+    .net-http { background: #1a1208; color: #d29922; border: 1px solid #d2992244; }
+    .net-detail { color: #f0f6fc; }
+    .net-sub    { color: #8b949e; font-size: 0.76rem; margin-top: 1px; }
+
     footer { margin-top: 40px; text-align: center; color: #484f58; font-size: 0.78rem; }
     footer a { color: #58a6ff; text-decoration: none; }
 
@@ -352,7 +384,16 @@
     </div>
   </div>
 
-  <div class="card table-card">
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-btn-alerts" onclick="switchTab('alerts')">
+      Alerts <span class="tab-count" id="tc-alerts">—</span>
+    </button>
+    <button class="tab-btn" id="tab-btn-network" onclick="switchTab('network')">
+      Network Activity <span class="tab-count" id="tc-network">—</span>
+    </button>
+  </div>
+
+  <div class="card table-card" id="tab-alerts">
     <div class="table-wrap">
       <table>
         <thead>
@@ -367,6 +408,24 @@
         </thead>
         <tbody id="tbody">
           <tr><td colspan="6" class="empty-state">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card table-card" id="tab-network" style="display:none">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Type</th>
+            <th>Details</th>
+            <th>Src IP</th>
+          </tr>
+        </thead>
+        <tbody id="net-tbody">
+          <tr><td colspan="4" class="empty-state">Loading…</td></tr>
         </tbody>
       </table>
     </div>
@@ -425,6 +484,7 @@
     const med  = alerts.filter(a => (a.alert?.severity ?? a.severity) == 2).length;
     const low  = alerts.filter(a => (a.alert?.severity ?? a.severity) >= 3).length;
     document.getElementById('stat-total').textContent = alerts.length;
+    document.getElementById('tc-alerts').textContent  = alerts.length;
     document.getElementById('stat-high').textContent  = high;
     document.getElementById('stat-med').textContent   = med;
     document.getElementById('stat-low').textContent   = low;
@@ -487,6 +547,58 @@
     prevIds = newSet;
   }
 
+  let currentTab = 'alerts';
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-alerts').style.display  = tab === 'alerts'  ? '' : 'none';
+    document.getElementById('tab-network').style.display = tab === 'network' ? '' : 'none';
+    document.getElementById('tab-btn-alerts').classList.toggle('active',  tab === 'alerts');
+    document.getElementById('tab-btn-network').classList.toggle('active', tab === 'network');
+  }
+
+  async function fetchNetwork() {
+    try {
+      const r = await fetch('/api/network-events');
+      const d = await r.json();
+      renderNetwork(d.events || []);
+    } catch { /* silent */ }
+  }
+
+  function renderNetwork(events) {
+    document.getElementById('tc-network').textContent = events.length;
+    const tbody = document.getElementById('net-tbody');
+    if (!events.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No network events yet…</td></tr>';
+      return;
+    }
+    tbody.innerHTML = events.map(e => {
+      const ts   = e.received_at || e.timestamp || '';
+      const type = e.event_type || '—';
+      const src  = e.src_ip || '—';
+      let badge, detail, sub;
+
+      if (type === 'dns') {
+        const q = e.dns || {};
+        badge  = '<span class="net-badge net-dns">DNS</span>';
+        detail = esc(q.rrname || '—');
+        sub    = esc(q.rrtype || '');
+      } else {
+        const h = e.http || {};
+        badge  = '<span class="net-badge net-http">HTTP</span>';
+        detail = `${esc(h.http_method || '')} ${esc(h.url || '—')}`;
+        sub    = esc(h.hostname || '');
+      }
+
+      return `<tr>
+        <td class="mono">${esc(fmtTs(ts))}</td>
+        <td>${badge}</td>
+        <td><div class="net-detail">${detail}</div>${sub ? `<div class="net-sub">${sub}</div>` : ''}</td>
+        <td class="mono">${esc(src)}</td>
+      </tr>`;
+    }).join('');
+  }
+
   function resetCd() {
     clearInterval(cdTimer);
     cdVal = 30;
@@ -494,7 +606,7 @@
     cdTimer = setInterval(() => {
       cdVal--;
       document.getElementById('countdown').textContent = cdVal;
-      if (cdVal <= 0) { clearInterval(cdTimer); fetchAlerts(); }
+      if (cdVal <= 0) { clearInterval(cdTimer); fetchAlerts(); fetchNetwork(); }
     }, 1000);
   }
 
@@ -504,6 +616,7 @@
   }, 10000);
 
   fetchAlerts();
+  fetchNetwork();
 </script>
 </body>
 </html>
