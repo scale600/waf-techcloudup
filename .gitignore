@@ -1,6 +1,8 @@
 # Environment & secrets
 .env
 .env.*
+*.env
+config.env
 *.json.key
 *-service-account*.json
 
