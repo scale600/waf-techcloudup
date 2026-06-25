@@ -15,7 +15,7 @@ Submit SQL Injection or XSS payloads through a web form and watch Cloudflare WAF
 
 **Stack:** GCP e2-micro · Nginx + Python Flask · Cloudflare WAF (OWASP CRS + Custom Rules)
 
-→ See [waf-techcloudup.md](waf-techcloudup.md) for full tech spec and implementation details.
+→ See [waf-techcloudup.md](docs/waf-techcloudup.md) for full tech spec and implementation details.
 
 ---
 
@@ -29,7 +29,7 @@ A near-real-time dashboard that visualizes Suricata IDS alerts and network proto
 
 **Stack:** Suricata · n8n · Python Flask · Cloudflare DNS
 
-→ See [ids-techcloudup.md](ids-techcloudup.md) for full tech spec and implementation details.
+→ See [ids-techcloudup.md](docs/ids-techcloudup.md) for full tech spec and implementation details.
 
 ---
 
@@ -43,7 +43,7 @@ On-demand passive investigation tool for suspected phishing or brand-impersonati
 
 **Stack:** Bash (investigate.sh) · Python Flask SSE · Nginx · GCP e2-micro
 
-→ See [takedown-techcloudup.md](takedown-techcloudup.md) for full tech spec and implementation details.
+→ See [takedown-techcloudup.md](docs/takedown-techcloudup.md) for full tech spec and implementation details.
 
 ---
 

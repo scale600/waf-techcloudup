@@ -1,6 +1,7 @@
 # Environment & secrets
 .env
 .env.*
+!.env.example
 *.env
 config.env
 *.json.key
@@ -16,6 +17,14 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Tool artifacts
+.codegraph/
+.playwright-mcp/
+.omo/
+
+# Screenshots
+screenshots/
 
 # Editor
 .vscode/
