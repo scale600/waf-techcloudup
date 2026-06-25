@@ -1,8 +1,10 @@
 import glob
 import io
 import json
+import logging
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import tempfile
@@ -15,12 +17,25 @@ from flask import Flask, request, jsonify, Response, send_file
 
 app = Flask(__name__)
 
+# Suppress Flask's default request logs (handled by Nginx)
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.WARNING)
+
 ALERTS_FILE         = os.environ.get('ALERTS_FILE',         '/opt/waf-demo/alerts.json')
 NETWORK_FILE        = os.environ.get('NETWORK_FILE',        '/opt/waf-demo/network_events.json')
 IDS_API_KEY         = os.environ.get('IDS_API_KEY',         '')
 INVESTIGATE_SCRIPT  = os.environ.get('INVESTIGATE_SCRIPT',  '/opt/takedown/investigate.sh')
 MAX_ALERTS   = 50
 MAX_NETWORK  = 100
+
+# Pre-encode API key as bytes for timing-safe comparison
+_IDS_API_KEY_BYTES = IDS_API_KEY.encode('utf-8') if IDS_API_KEY else b''
+
+def _valid_api_key(header_val):
+    """Timing-safe API key comparison to prevent timing attacks."""
+    if not IDS_API_KEY or not header_val:
+        return False
+    return secrets.compare_digest(header_val.encode('utf-8'), _IDS_API_KEY_BYTES)
 
 _DOMAIN_RE = re.compile(
     r'^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?'
@@ -76,9 +91,28 @@ def health():
     return jsonify({'status': 'ok'})
 
 
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify({'error': 'Internal server error'}), 500
+
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({'error': 'Not found'}), 404
+
+
 @app.route('/api/ingest', methods=['POST'])
 def ingest():
-    if request.headers.get('X-API-Key') != IDS_API_KEY or not IDS_API_KEY:
+    if not _valid_api_key(request.headers.get('X-API-Key', '')):
         return jsonify({'error': 'Unauthorized'}), 401
 
     data = request.get_json(silent=True)
@@ -103,7 +137,7 @@ def get_alerts():
 
 @app.route('/api/network-events', methods=['POST'])
 def network_ingest():
-    if request.headers.get('X-API-Key') != IDS_API_KEY or not IDS_API_KEY:
+    if not _valid_api_key(request.headers.get('X-API-Key', '')):
         return jsonify({'error': 'Unauthorized'}), 401
 
     data = request.get_json(silent=True)
@@ -166,8 +200,8 @@ def investigate_stream():
                 yield f"data: {json.dumps({'__done__': True, 'token': token})}\n\n"
             else:
                 yield f"data: {json.dumps({'__done__': True})}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps(f'Error: {e}')}\n\n"
+        except Exception:
+            yield f"data: {json.dumps('Error: Investigation failed')}\n\n"
             yield f"data: {json.dumps({'__done__': True})}\n\n"
         finally:
             if not registered:
