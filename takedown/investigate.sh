@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -o pipefail
+set -euo pipefail
 
 # Get domain input
 if [ -z "$1" ]; then
